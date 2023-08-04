@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "beamng-app",
+    "beamng-server",
+    "beamng-types"
+]
