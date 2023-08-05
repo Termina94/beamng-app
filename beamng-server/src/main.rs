@@ -189,7 +189,7 @@ async fn update_map_value(new_value: &str) -> io::Result<()> {
 
 async fn get_levels() -> Result<Vec<String>> {
     let server_folder = std::env::var("SERVER_FOLDER").expect("SERVER_FOLDER not set");
-    let level_directory = format!("{}/mods", server_folder);
+    let level_directory = format!("{}/Resources/Client", server_folder);
     let mut mods = tokio::fs::read_dir(level_directory).await?;
     let regex = Regex::new(r"^levels+\/([^/]+)\/$").unwrap();
 
