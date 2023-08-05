@@ -43,7 +43,7 @@ pub fn use_websocket(cx: Scope) -> RwSignal<Websocket> {
 async fn handle_websocket(cx: Scope, set_socket: RwSignal<Websocket>) {
     set_socket.update(|ws| ws.status = SocketStatus::Connecting);
 
-    let addr = "ws:192.168.0.10/ws";
+    let addr = "ws:192.168.0.40/ws";
 
     if let Ok((_, wsio)) = WsMeta::connect(addr, None).await {
         let (write, mut read) = wsio.split();
