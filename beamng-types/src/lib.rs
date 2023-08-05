@@ -6,10 +6,16 @@ pub struct SocketMessage {
 }
 
 #[derive(Default)]
-pub struct AppState {}
+pub struct AppState {
+    pub levels: Vec<String>,
+    pub selected_level: Option<String>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum SocketAction {}
+pub enum SocketAction {
+    SetSelectedLevel(Option<String>),
+    LevelListInit(Vec<String>),
+}
 
 #[derive(Clone, Default)]
 pub enum SocketStatus {
