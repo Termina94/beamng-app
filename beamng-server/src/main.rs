@@ -3,6 +3,7 @@ extern crate serde;
 extern crate serde_json;
 
 use anyhow::Result;
+use async_process::{Child, Command};
 use async_zip::tokio::read::seek::ZipFileReader;
 use beamng_types::{AppState, SocketMessage};
 use dotenv::dotenv;
@@ -31,6 +32,7 @@ struct WebSocket {
 }
 
 type SocketRef = Arc<Mutex<WebSocket>>;
+type ServerRef = Arc<Mutex<Child>>;
 
 impl WebSocket {
     async fn broadcast(&mut self, message: &SocketMessage) {
@@ -48,6 +50,7 @@ impl WebSocket {
 async fn main() -> Result<(), std::io::Error> {
     dotenv().ok();
 
+    let mut server = Arc::new(Mutex::new(start_server().await));
     let levels = get_levels().await.unwrap();
     let websocket = Arc::new(Mutex::new(WebSocket::default()));
     let state = Arc::new(Mutex::new(AppState {
@@ -65,6 +68,7 @@ async fn main() -> Result<(), std::io::Error> {
                 .index_file("index.html"),
         )
         .data(state.clone())
+        .data(server.clone())
         .data(websocket.clone());
 
     let addr = std::env::var("SERVER_ADDR").expect("SERVER_ADDR not set");
@@ -72,14 +76,29 @@ async fn main() -> Result<(), std::io::Error> {
     Server::new(TcpListener::bind(&addr)).run(app).await
 }
 
+async fn start_server() -> Child {
+    let server_folder = std::env::var("SERVER_FOLDER").expect("SERVER_FOLDER not set");
+    let server_file = format!("{}/BeamMP-Server.exe", server_folder);
+
+    Command::new(server_file).spawn().unwrap()
+}
+
+async fn restart_server(server: &Arc<Mutex<Child>>) {
+    let _ = server.lock().await.kill();
+
+    *server.lock().await = start_server().await;
+}
+
 #[handler]
 async fn handle_websocket(
     ws: poem::web::websocket::WebSocket,
     Data(store): Data<&Arc<Mutex<AppState>>>,
     Data(socket): Data<&SocketRef>,
+    Data(server): Data<&ServerRef>,
 ) -> impl IntoResponse {
     let store = store.clone();
     let socket = socket.clone();
+    let server = server.clone();
 
     ws.on_upgrade(|mut ws| async move {
         let (mut write, mut read) = ws.split();
@@ -118,6 +137,7 @@ async fn handle_websocket(
                                     let _ = update_map_value(level).await;
                                 }
 
+                                restart_server(&server).await;
                                 store.lock().await.selected_level = level.clone();
                                 socket
                                     .lock()
